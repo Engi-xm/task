@@ -6,23 +6,24 @@ struct Node {
 	struct Node* left;
 	struct Node* right;
 };
+typedef struct Node node_t;
 
-struct Node* new_node(int data) {
-	struct Node* node = (struct Node*)malloc(sizeof(struct Node));
+node_t* new_node(int data) {
+	node_t* node = (node_t*)malloc(sizeof(node_t));
 	node->data = data;
 	node->left = NULL;
 	node->right = NULL;
 	return node;
 }
 
-int sum_binary_tree(struct Node* root) {
+int sum_binary_tree(node_t* root) {
 	if(root == NULL) 
 		return 0;
 	return root->data + sum_binary_tree(root->left) + sum_binary_tree(root->right);
 }
 
 int main(void) {
-	struct Node* root = 	new_node(2);
+	node_t* root = 			new_node(2);
 	root->left = 			new_node(5);
 	root->right = 			new_node(7);
 	root->left->left = 		new_node(10);

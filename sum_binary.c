@@ -23,10 +23,10 @@ int sum_binary_tree(node_t* root) {
 }
 
 int main(void) {
-	node_t* root = 			new_node(2);
-	root->left = 			new_node(5);
-	root->right = 			new_node(7);
-	root->left->left = 		new_node(10);
+	node_t* root = 		new_node(2);
+	root->left = 		new_node(5);
+	root->right = 		new_node(7);
+	root->left->left = 	new_node(10);
 	root->left->right = 	new_node(2);
 	root->right->right = 	new_node(4);
 	

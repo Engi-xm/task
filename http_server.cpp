@@ -9,8 +9,9 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#define BACKLOG 10
-#define MAX_DATA_SIZE 100
+#define BACKLOG 10 // max concurrent connections
+#define MAX_DATA_SIZE 100 // receive message buffer size
+#define FILE_READ_SIZE 512 // send file chunk size
 #define HTTP_200 "HTTP/1.1 200 OK"
 #define HTTP_400 "HTTP/1.1 400 Bad Request"
 #define HTTP_404 "HTTP/1.1 404 Not Found"
@@ -22,6 +23,8 @@ int main(int argc, char const *argv[]) {
 	// int yes = 1; // setsockopt variable
 	int bytes_received;
 	char rec_buf[MAX_DATA_SIZE]; // receive buffer
+	char file_buf[FILE_READ_SIZE]; // file buffer
+	int file_block_size; // read file block size 
 	int socket_fd, new_fd; // listen on socket_fd, serve connections on new_fd
 	struct addrinfo hints;
 	struct addrinfo *serv_info;  // will point to the results
@@ -106,7 +109,14 @@ int main(int argc, char const *argv[]) {
 					exit(1); // terminate child (error)
 				} else {
 					send(new_fd, HTTP_200, strlen(HTTP_200), 0); // send http200
-					// TODO: send file
+					bzero(file_buf, FILE_READ_SIZE); // zero file buffer
+					while((file_block_size = fread(file_buf, sizeof(char), FILE_READ_SIZE, file_to_send)) > 0) {
+						if(send(new_fd, file_buf, file_block_size, 0) < 0) {
+							cout << "send file error"; // print error
+							exit(1); // terminate child (error)
+						}
+						bzero(file_buf, FILE_READ_SIZE); // clear buffer for new iteration
+					}
 					fclose(file_to_send); // close open file
 				}
 			} else {

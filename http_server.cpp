@@ -10,12 +10,18 @@
 #include <netinet/in.h>
 
 #define BACKLOG 10
+#define MAX_DATA_SIZE 100
+#define HTTP_200 "HTTP/1.1 200 OK"
+#define HTTP_400 "HTTP/1.1 400 Bad Request"
+#define HTTP_404 "HTTP/1.1 404 Not Found"
 
 using namespace std;
 
 int main(int argc, char const *argv[]) {
-	int status;
-	int yes = 1;
+	int status, pid;
+	int yes = 1; // setsockopt variable
+	int bytes_received;
+	char rec_buf[MAX_DATA_SIZE]; // receive buffer
 	int socket_fd, new_fd; // listen on socket_fd, serve connections on new_fd
 	struct addrinfo hints;
 	struct addrinfo *serv_info;  // will point to the results
@@ -44,6 +50,8 @@ int main(int argc, char const *argv[]) {
 	// create socket
 	socket_fd = socket(serv_info->ai_family, serv_info->ai_socktype, serv_info->ai_protocol); // open socket
 	
+	// TODO: add setsockopt (reuse ports)
+
 	// bind socket
 	if(bind(socket_fd, serv_info->ai_addr, serv_info->ai_addrlen) == -1) { // if binding failed
 		cout << "bind error"; // print error
@@ -58,29 +66,35 @@ int main(int argc, char const *argv[]) {
 		cout << "listen error"; // print error
 		return 1;
 	}
+
+	// TODO: clear zombies
 	
 	while(1) { // accept loop
 		their_addr_size = sizeof(their_addr);
 		new_fd = accept(socket_fd, (struct sockaddr*)&their_addr, &their_addr_size); // accept connection
-		if(new_fd == -1) { // if failed
-			cout << "error on accept";
+		if(new_fd == -1) { // if unsuccessful
+			cout << "accept error"; // print error
 			continue;
 		}
 
-		if(!fork()) { // child process
+		if((pid = fork()) < 0) // if unsuccessful
+			cout << "fork error"; // print error
+		else if(pid == 0) { // child process
 			close(socket_fd); // close listener
-			// receive request
-
+			if((bytes_received = recv(new_fd, rec_buf, MAX_DATA_SIZE - 1, 0)) == -1) { // receive request
+				send(new_fd, HTTP_400, strlen(HTTP_400), 0); // send http400
+				cout << "receive error"; // print error
+				exit(1); // terminate child
+			}
 			// file_to_send = fopen(file_req+argv[2])
 			// if(file_to_send == NULL) {
-			// 	send html404
+			// 	send http404
 			// } else {
-			// 	send html200 and file
+			// 	send http200 and file
 			close(new_fd); // close socket
 			exit(0); // terminate child
 		}
 		close(new_fd); // close new connection on parent
-
 	}
 
 	return 0;

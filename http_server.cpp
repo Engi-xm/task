@@ -18,8 +18,8 @@
 using namespace std;
 
 int main(int argc, char const *argv[]) {
-	int status, pid;
-	int yes = 1; // setsockopt variable
+	int pid;
+	// int yes = 1; // setsockopt variable
 	int bytes_received;
 	char rec_buf[MAX_DATA_SIZE]; // receive buffer
 	int socket_fd, new_fd; // listen on socket_fd, serve connections on new_fd
@@ -28,6 +28,9 @@ int main(int argc, char const *argv[]) {
 	struct sockaddr_storage their_addr; // connector's address information
 	socklen_t their_addr_size; // connector's address size
 	FILE *file_to_send; // file requested by client
+	string request; // request string
+	char* file_name; // file name to send
+	const string get ("GET"); // get string
 
 	if(argc != 3) {
 		cout << "usage: html_sever port root_dir\n";
@@ -81,18 +84,38 @@ int main(int argc, char const *argv[]) {
 			cout << "fork error"; // print error
 		else if(pid == 0) { // child process
 			close(socket_fd); // close listener
+
+			// TODO: refactor to functions
+
 			if((bytes_received = recv(new_fd, rec_buf, MAX_DATA_SIZE - 1, 0)) == -1) { // receive request
 				send(new_fd, HTTP_400, strlen(HTTP_400), 0); // send http400
 				cout << "receive error"; // print error
-				exit(1); // terminate child
+				exit(1); // terminate child (error)
 			}
-			// file_to_send = fopen(file_req+argv[2])
-			// if(file_to_send == NULL) {
-			// 	send http404
-			// } else {
-			// 	send http200 and file
+			rec_buf[MAX_DATA_SIZE] = '\0'; // close array
+			request = rec_buf; // convert char array to string
+			if(!(request.compare(0, 3, get))) { // if received GET request
+				// get file name (second rec_buf argument)
+				file_name = strtok(rec_buf, " ");
+				file_name = strtok(NULL, " ");
+				// TODO: prepend argv[2] to file_name
+				file_to_send = fopen(file_name, "r"); // open file to send (read-only)
+				if(file_to_send == NULL) { // if file not found
+					send(new_fd, HTTP_404, strlen(HTTP_404), 0); // send http404
+					cout << "file not found error"; // print error
+					exit(1); // terminate child (error)
+				} else {
+					send(new_fd, HTTP_200, strlen(HTTP_200), 0); // send http200
+					// TODO: send file
+					fclose(file_to_send); // close open file
+				}
+			} else {
+				send(new_fd, HTTP_400, strlen(HTTP_400), 0); // send http400
+				cout << "received data error"; // print error
+				exit(1); // terminate child (error)
+			}
 			close(new_fd); // close socket
-			exit(0); // terminate child
+			exit(0); // terminate child (no-error)
 		}
 		close(new_fd); // close new connection on parent
 	}
